@@ -13,9 +13,16 @@ LIBDIR     := lib/github.com/sjqtentacles/sml-diff
 TEST_MLB   := test/test.mlb
 SRCS       := $(wildcard $(LIBDIR)/*.sml $(LIBDIR)/*.sig $(LIBDIR)/*.mlb) test/test.sml $(TEST_MLB)
 
-.PHONY: all test poly test-poly all-tests clean
+.PHONY: all test poly test-poly all-tests example clean
 
 all: $(BIN)/test-mlton
+
+example: $(BIN)/diff_demo
+	mkdir -p assets
+	./$(BIN)/diff_demo
+
+$(BIN)/diff_demo: $(SRCS) examples/render.sml examples/diff_demo.sml examples/sources.mlb | $(BIN)
+	$(MLTON) -output $@ examples/sources.mlb
 
 $(BIN)/test-mlton: $(SRCS) | $(BIN)
 	$(MLTON) -output $@ $(TEST_MLB)

@@ -1,0 +1,7 @@
+$(SML_LIB)/basis/basis.mlb
+
+../lib/github.com/sjqtentacles/sml-diff/diff.mlb
+../lib/github.com/sjqtentacles/sml-image/image.mlb
+
+render.sml
+diff_demo.sml
