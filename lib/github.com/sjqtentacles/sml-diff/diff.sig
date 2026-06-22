@@ -39,6 +39,24 @@ sig
   val applyOld : 'a edit list -> 'a list   (* Keep + Delete *)
   val applyNew : 'a edit list -> 'a list   (* Keep + Insert *)
 
+  (* Apply an edit script as a patch: given the original sequence and a script
+     (e.g. the output of `diff`/`diffList`), reconstruct the target sequence.
+     The `eq` predicate matches the threading used by `diff`; the original comes
+     before the script so `applyEdits eq a (diff eq a b)` reads left to right.
+
+     Walking the script with a cursor into the original, each `Keep x`/`Delete x`
+     must align with (be `eq` to) the original element under the cursor and then
+     advances it; `Insert x` emits `x` without advancing. The result is the
+     reconstructed target (the `Keep`/`Insert` elements, i.e. `applyNew`), but
+     only when the script is consistent with the original.
+
+     Returns `NONE` (rather than raising) when the script is inconsistent: a
+     `Keep`/`Delete` element does not match the original at that position, the
+     script consumes past the end of the original, or it does not consume the
+     original in full. Otherwise `SOME` the target. *)
+  val applyEdits     : ('a * 'a -> bool) -> 'a vector -> 'a edit list -> 'a vector option
+  val applyEditsList : ('a * 'a -> bool) -> 'a list   -> 'a edit list -> 'a list option
+
   (* ---- Line-oriented text helpers ------------------------------------- *)
 
   (* Split into lines on "\n". A trailing newline does not produce a final

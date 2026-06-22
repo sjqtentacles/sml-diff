@@ -103,6 +103,50 @@ fun run () =
                  ("1234567890", "1234509876")]
     val allRecon = List.all (fn (a, b) => reconstructs a b) pairs
     val () = check "all sample pairs reconstruct both sides" allRecon
+
+    (* applyEdits: apply a computed patch and round-trip back to the target. *)
+    val di = D.diffList (op = : int * int -> bool)
+    val ds = D.diffList (op = : string * string -> bool)
+
+    (* Round-trip property: applyEditsList (a, diff a b) = SOME b. *)
+    val () = check "applyEdits round-trip [1,2,3]->[1,3,4]"
+                   (D.applyEditsList (op =) [1,2,3] (di [1,2,3] [1,3,4])
+                    = SOME [1,3,4])
+    val () = check "applyEdits round-trip []->[1,2]"
+                   (D.applyEditsList (op =) [] (di [] [1,2]) = SOME [1,2])
+    val () = check "applyEdits round-trip [1,2,3]->[]"
+                   (D.applyEditsList (op =) [1,2,3] (di [1,2,3] []) = SOME [])
+    val () = check "applyEdits round-trip identical [1,2,3]"
+                   (D.applyEditsList (op =) [1,2,3] (di [1,2,3] [1,2,3])
+                    = SOME [1,2,3])
+    val () = check "applyEdits round-trip strings"
+                   (D.applyEditsList (op =) ["x","y","z"]
+                                     (ds ["x","y","z"] ["x","w","z","q"])
+                    = SOME ["x","w","z","q"])
+
+    (* The vector form agrees with diff over vectors. *)
+    val () = check "applyEdits vector round-trip"
+                   (case D.applyEdits (op =) (cv "abc") (charDiff "abc" "axc") of
+                        SOME v => implode (Vector.foldr (op ::) [] v) = "axc"
+                      | NONE => false)
+
+    (* Inconsistency -> NONE: a Keep that doesn't match the original. *)
+    val () = check "applyEdits Keep mismatch -> NONE"
+                   (D.applyEditsList (op = : int*int->bool)
+                                     [1,2,3] [D.Keep 9] = NONE)
+    (* A Delete that doesn't match the original at that position. *)
+    val () = check "applyEdits Delete mismatch -> NONE"
+                   (D.applyEditsList (op = : int*int->bool)
+                                     [1,2,3]
+                                     [D.Delete 1, D.Delete 9, D.Keep 3] = NONE)
+    (* Script keeps/deletes more elements than the original has. *)
+    val () = check "applyEdits past end -> NONE"
+                   (D.applyEditsList (op = : int*int->bool)
+                                     [1] [D.Keep 1, D.Delete 2] = NONE)
+    (* Script does not consume the original in full. *)
+    val () = check "applyEdits underrun -> NONE"
+                   (D.applyEditsList (op = : int*int->bool)
+                                     [1,2,3] [D.Keep 1] = NONE)
   in
     print ("\n" ^ Int.toString (!passed) ^ " passed, "
            ^ Int.toString (!failed) ^ " failed\n");

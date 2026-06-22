@@ -29,6 +29,13 @@ datatype 'a edit = Keep of 'a | Insert of 'a | Delete of 'a
 Reading the `Keep`s gives the longest common subsequence; the `Keep`/`Delete`
 elements reconstruct the first sequence and `Keep`/`Insert` the second.
 
+A script can also be applied as a patch: `applyEdits` (and its list wrapper
+`applyEditsList`) take the original sequence and a script and reconstruct the
+target, validating the script against the original as they go. This makes the
+diff/apply round-trip explicit: `applyEdits eq a (diff eq a b) = SOME b`. An
+inconsistent script (a `Keep`/`Delete` that does not match the original, or one
+that runs past or short of its end) yields `NONE` rather than raising.
+
 ## Portability
 
 Pure Standard ML using only the Basis library. Verified on:
@@ -103,6 +110,18 @@ val common = Diff.lcs (op =) a b          (* longest common subsequence  *)
 (* lists, case-insensitive, etc. *)
 val es2 = Diff.diffList (fn (x, y) => Char.toLower x = Char.toLower y)
                         (explode "Hello") (explode "hello")
+```
+
+Apply a computed patch to recover the target (round-trip):
+
+```sml
+val a = [1, 2, 3]
+val b = [1, 3, 4]
+val script = Diff.diffList (op =) a b
+val back   = Diff.applyEditsList (op =) a script   (* SOME [1, 3, 4] *)
+
+(* An edit that doesn't line up with the original is rejected. *)
+val bad = Diff.applyEditsList (op =) [1, 2, 3] [Diff.Keep 9]   (* NONE *)
 ```
 
 ## Project layout

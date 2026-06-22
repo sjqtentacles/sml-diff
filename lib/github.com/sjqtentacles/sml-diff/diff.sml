@@ -138,6 +138,31 @@ struct
   fun applyNew es =
       List.mapPartial (fn Keep x => SOME x | Insert x => SOME x | Delete _ => NONE) es
 
+  fun applyEdits (eq : 'a * 'a -> bool) (orig : 'a vector) (edits : 'a edit list)
+      : 'a vector option =
+      let
+        val n = Vector.length orig
+        (* i is the cursor into `orig`; acc accumulates the target in reverse. *)
+        fun go ([], i, acc) =
+              if i = n then SOME (Vector.fromList (List.rev acc)) else NONE
+          | go (Keep x :: rest, i, acc) =
+              if i < n andalso eq (Vector.sub (orig, i), x)
+              then go (rest, i + 1, x :: acc)
+              else NONE
+          | go (Delete x :: rest, i, acc) =
+              if i < n andalso eq (Vector.sub (orig, i), x)
+              then go (rest, i + 1, acc)
+              else NONE
+          | go (Insert x :: rest, i, acc) =
+              go (rest, i, x :: acc)
+      in
+        go (edits, 0, [])
+      end
+
+  fun applyEditsList eq xs edits =
+      Option.map (fn v => Vector.foldr (op ::) [] v)
+                 (applyEdits eq (fromList xs) edits)
+
   (* ---- Text helpers ---------------------------------------------------- *)
 
   fun splitLines s =
