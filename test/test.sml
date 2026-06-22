@@ -1,35 +1,31 @@
-(* Dependency-free test runner for the Diff structure.
- * Prints one line per assertion and exits non-zero if any assertion fails. *)
+(* Test suite for the Diff structure, standardized on the shared
+ * sml-test Harness. *)
 
-structure D = Diff
+structure Tests =
+struct
+  open Harness
 
-val passed = ref 0
-val failed = ref 0
+  structure D = Diff
 
-fun check (name : string) (cond : bool) : unit =
-    if cond
-    then (passed := !passed + 1; print ("ok   - " ^ name ^ "\n"))
-    else (failed := !failed + 1; print ("FAIL - " ^ name ^ "\n"))
+  (* charvec from a string *)
+  fun cv s = Vector.fromList (explode s)
 
-(* charvec from a string *)
-fun cv s = Vector.fromList (explode s)
+  (* render an edit list of chars compactly, e.g. " a-b+c" *)
+  fun showCharEdits es =
+      String.concat
+        (map (fn D.Keep c => " " ^ str c
+               | D.Delete c => "-" ^ str c
+               | D.Insert c => "+" ^ str c) es)
 
-(* render an edit list of chars compactly, e.g. " a-b+c" *)
-fun showCharEdits es =
-    String.concat
-      (map (fn D.Keep c => " " ^ str c
-             | D.Delete c => "-" ^ str c
-             | D.Insert c => "+" ^ str c) es)
+  fun charDiff a b = D.diff (op = : char * char -> bool) (cv a) (cv b)
 
-fun charDiff a b = D.diff (op = : char * char -> bool) (cv a) (cv b)
+  (* The fundamental property: applyOld reconstructs a, applyNew reconstructs b. *)
+  fun reconstructs a b =
+      let val es = charDiff a b
+      in implode (D.applyOld es) = a andalso implode (D.applyNew es) = b end
 
-(* The fundamental property: applyOld reconstructs a, applyNew reconstructs b. *)
-fun reconstructs a b =
-    let val es = charDiff a b
-    in implode (D.applyOld es) = a andalso implode (D.applyNew es) = b end
-
-fun run () =
-  let
+  fun run () =
+    let
     (* Degenerate cases *)
     val () = check "empty vs empty is []" (null (charDiff "" ""))
     val () = check "empty vs abc is 3 inserts"
@@ -148,9 +144,6 @@ fun run () =
                    (D.applyEditsList (op = : int*int->bool)
                                      [1,2,3] [D.Keep 1] = NONE)
   in
-    print ("\n" ^ Int.toString (!passed) ^ " passed, "
-           ^ Int.toString (!failed) ^ " failed\n");
-    OS.Process.exit (if !failed = 0 then OS.Process.success else OS.Process.failure)
+    Harness.run ()
   end
-
-val () = run ()
+end
